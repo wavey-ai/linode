@@ -1,0 +1,16 @@
+[package]
+name = "linode"
+version = "0.0.1"
+edition = "2021"
+license = "MIT"
+description = "Linode http api methods and utilities"
+repository = "https://github.com/wavey-ai/linode"
+readme = "README.md"
+
+[dependencies]
+rand = "0.8.5"
+svix-ksuid = "0.8.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0.116"
+reqwest = { version = "0.12.4", features = ["json"] }
+lazy_static = "1.4.0"
