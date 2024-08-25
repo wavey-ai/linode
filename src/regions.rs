@@ -15,11 +15,11 @@ lazy_static! {
     pub static ref REGIONS: HashMap<&'static str, RegionInfo> = {
         let mut m = HashMap::new();
         m.insert(
-            "eu-west",
+            "gb-lon",
             RegionInfo {
-                code: "uk-lhr",
+                code: "gb-lon",
                 is_legacy: true,
-                region: "eu-west",
+                region: "gb-lon",
             },
         );
         m.insert(
