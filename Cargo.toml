@@ -3,7 +3,7 @@ name = "linode"
 version = "0.0.1"
 edition = "2021"
 license = "MIT"
-description = "Linode http api methods and utilities"
+description = "Linode API abstractions"
 repository = "https://github.com/wavey-ai/linode"
 readme = "README.md"
 

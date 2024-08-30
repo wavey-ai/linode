@@ -5,6 +5,7 @@ use rand::{distributions::Alphanumeric, Rng};
 use regex::Regex;
 use reqwest::{Client, Error};
 use serde::{Deserialize, Serialize};
+use std::cmp::Ordering;
 use std::{collections::HashMap, f32::consts::LOG2_E};
 use svix_ksuid::*;
 use tls_helpers::from_base64_raw;
@@ -176,6 +177,19 @@ pub struct DomainRecord {
     ttl_sec: i32,
 }
 
+impl DomainRecord {
+    fn extract_prefix_and_number(&self) -> (&str, Option<i32>) {
+        let re = Regex::new(r"^(.*?)-(\d+)$").unwrap();
+        if let Some(caps) = re.captures(&self.name) {
+            let prefix = caps.get(1).map_or("", |m| m.as_str());
+            let number = caps.get(2).map_or(None, |m| m.as_str().parse::<i32>().ok());
+            (prefix, number)
+        } else {
+            (&self.name, None)
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 struct DomainRecordsResponse {
     data: Vec<DomainRecord>,
@@ -225,7 +239,7 @@ impl LinodeClient {
         info!("Fetching domain records for domain ID: {}", domain);
         let response = self
             .client
-            .get(format!("{}/domains/{}/records", API_HOST, domain))
+            .get(&format!("{}/domains/{}/records", API_HOST, domain))
             .bearer_auth(&self.token)
             .send()
             .await?;
@@ -238,7 +252,19 @@ impl LinodeClient {
             domain
         );
 
-        Ok(records.data)
+        // Sort the records by prefix and then by the numeric suffix
+        let mut records = records.data;
+        records.sort_by(|a, b| {
+            let (prefix_a, num_a) = a.extract_prefix_and_number();
+            let (prefix_b, num_b) = b.extract_prefix_and_number();
+
+            match prefix_a.cmp(prefix_b) {
+                Ordering::Equal => num_a.cmp(&num_b),
+                other => other,
+            }
+        });
+
+        Ok(records)
     }
 
     pub async fn delete_record(&self, domain: u64, id: u64) -> Result<(), Error> {
@@ -294,7 +320,7 @@ impl LinodeClient {
             record_type: "A".to_owned(),
             name: name.clone(),
             target: target.clone(),
-            ttl_sec: 3600,
+            ttl_sec: 30,
         };
         self.client
             .post(format!("{}/domains/{}/records", API_HOST, domain))
