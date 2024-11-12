@@ -160,6 +160,7 @@ pub struct DomainRecordOptions {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DomainRecordUpdateOptions {
     target: String,
+    ttl_sec: i32,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -291,6 +292,7 @@ impl LinodeClient {
         );
         let options = DomainRecordUpdateOptions {
             target: target.to_owned(),
+            ttl_sec: 30,
         };
         self.client
             .put(format!("{}/domains/{}/records/{}", API_HOST, domain, id))
@@ -499,25 +501,27 @@ impl LinodeClient {
     }
 
     // remove an instance that has a particular tag
-    pub async fn scale_down_one(
+    pub async fn scale_down(
         &self,
         domain: u64,
         region: &RegionInfo,
         tag: &str,
-    ) -> Result<(), Error> {
+        n: usize,
+    ) -> Result<usize, Error> {
         info!(
             "Scaling down an instance in region: {} with tag: {}",
             region.code, tag
         );
         let instances = self.get_instances_by_tag(vec![tag, region.code]).await?;
         let records = self.fetch_records(domain).await?;
-
+        let done = false;
         let mut a_records = HashMap::new();
         for record in records {
             a_records.insert(record.target, record.id);
         }
 
-        for instance in instances {
+        let mut done = 0;
+        for (i, instance) in instances.iter().enumerate() {
             if let Some(id) = a_records.get(&instance.ipv4[0]) {
                 self.update_record_target(domain, *id, LOCALHOST).await?;
                 self.destroy_instance(instance.id).await?;
@@ -526,11 +530,15 @@ impl LinodeClient {
                     "Scaled down instance ID: {} with label: {} in region: {}",
                     instance.id, instance.label, region.code
                 );
-                break;
+
+                done += 1;
+                if i + 1 > n {
+                    break;
+                }
             }
         }
 
-        Ok(())
+        Ok(done)
     }
 
     // add an instance to the same VLAN as other linodes in a region

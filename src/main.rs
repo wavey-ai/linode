@@ -113,15 +113,13 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
                 n,
             } => {
                 if let Some(region_info) = REGIONS.get(region.as_str()) {
-                    for _ in 0..n {
-                        client
-                            .scale_down_one(domain_id, region_info, &tag)
-                            .await
-                            .map_err(|e| format!("Failed to scale down: {}", e))?;
-                    }
+                    let i = client
+                        .scale_down(domain_id, region_info, &tag, n as usize)
+                        .await
+                        .map_err(|e| format!("Failed to scale down: {}", e))?;
                     println!(
                         "Scaled down {} instance(s) in region: {}",
-                        n, region_info.region
+                        i, region_info.region
                     );
                 } else {
                     eprintln!("Region code '{}' not found.", region);
